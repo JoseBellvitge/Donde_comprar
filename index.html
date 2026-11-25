@@ -54,7 +54,6 @@
         .feedback-good { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .feedback-warn { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
 
-        /* Tarjetas del Comparador mejoradas visualmente */
         .comp-card {
             background: #ffffff;
             border: 2px solid var(--border);
@@ -627,22 +626,53 @@
         }
     }
 
-    function quickAddToList(name) {
-        const upper = name.toUpperCase();
+    // Comprobación centralizada para añadir productos a la lista sin duplicados
+    function insertProductIfUnique(rawName, showAddedAlert) {
+        const upper = rawName.trim().toUpperCase();
+        if (!upper) return false;
+
+        const key = normalizeKey(upper);
+        const existingIdx = shoppingList.findIndex(item => normalizeKey(item.name) === key);
+
+        if (existingIdx > -1) {
+            const existingItem = shoppingList[existingIdx];
+            if (!existingItem.done) {
+                alert(`⚠️ "${upper}" ya lo tienes apuntado en tu lista de la compra.`);
+                return false;
+            } else {
+                if (confirm(`"${upper}" ya está en tu lista pero marcado como comprado (tachado).\n\n¿Quieres volver a activarlo en la lista?`)) {
+                    shoppingList[existingIdx].done = false;
+                    saveData();
+                    return true;
+                }
+                return false;
+            }
+        }
+
         shoppingList.unshift({ id: Date.now().toString(), name: upper, done: false });
         saveData();
-        alert(`"${upper}" añadido a tu lista de la compra.`);
+        if (showAddedAlert) {
+            alert(`✅ "${upper}" añadido a tu lista de la compra.`);
+        }
+        return true;
+    }
+
+    function quickAddToList(name) {
+        insertProductIfUnique(name, true);
     }
 
     function addToShoppingList() {
         const input = document.getElementById('listInput');
-        const val = input.value.trim().toUpperCase();
+        const val = input.value.trim();
         if (!val) return;
 
-        shoppingList.unshift({ id: Date.now().toString(), name: val, done: false });
-        input.value = '';
-        saveData();
-        renderShoppingList();
+        const added = insertProductIfUnique(val, false);
+        if (added) {
+            input.value = '';
+            renderShoppingList();
+        } else {
+            input.select();
+        }
     }
 
     function renderFilterPills() {
@@ -704,7 +734,7 @@
         savingsEl.style.display = 'none';
 
         if (shoppingList.length === 0) {
-            container.innerHTML = '<div class="empty-msg">Tu lista está vacía. Añade productos arriba o desde el comparador.</div>';
+            container.innerHTML = '<div class="empty-msg">Tu lista está vacía. Añade productos arriba o desde Productos.</div>';
             document.getElementById('totalEstimated').textContent = '0,00 €';
             return;
         }
