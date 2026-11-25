@@ -36,13 +36,16 @@
         input[type="text"], input[type="number"] { width: 100%; padding: 14px; font-size: 18px; border: 2px solid var(--border); border-radius: 12px; outline: none; background: #fff; }
         input:focus { border-color: var(--accent); }
         .store-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .store-option { padding: 14px; border: 2px solid var(--border); border-radius: 12px; font-size: 18px; font-weight: 800; text-align: center; cursor: pointer; background: #f8fafc; transition: all 0.15s; }
+        .store-option { position: relative; padding: 14px 28px; border: 2px solid var(--border); border-radius: 12px; font-size: 18px; font-weight: 800; text-align: center; cursor: pointer; background: #f8fafc; transition: all 0.15s; user-select: none; }
         .store-option.full-row { grid-column: 1 / -1; }
         .store-option.selected[data-store="Mercadona"] { background: var(--c-mercadona); color: white; border-color: var(--c-mercadona); }
         .store-option.selected[data-store="Lidl"] { background: var(--c-lidl); color: white; border-color: var(--c-lidl); }
         .store-option.selected[data-store="Aldi"] { background: var(--c-aldi); color: white; border-color: var(--c-aldi); }
         .store-option.selected[data-store="Caprabo"] { background: var(--c-caprabo); color: white; border-color: var(--c-caprabo); }
-        .store-option.selected[data-store="Otra"] { background: var(--c-custom); color: white; border-color: var(--c-custom); }
+        .store-option.selected[data-type="custom"] { background: var(--c-custom); color: white; border-color: var(--c-custom); }
+        .store-option.selected[data-store="Otra"] { background: #475569; color: white; border-color: #475569; }
+        .btn-remove-store { position: absolute; top: 4px; right: 6px; background: rgba(0,0,0,0.12); color: inherit; border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 15px; font-weight: 800; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .btn-remove-store:hover { background: var(--danger); color: white; }
         .custom-store-box { margin-top: 10px; display: none; gap: 8px; align-items: center; }
         .btn-clear-input { background: #e2e8f0; border: none; border-radius: 12px; padding: 14px 16px; font-size: 18px; font-weight: 800; color: var(--primary); cursor: pointer; flex-shrink: 0; }
         .btn-main { width: 100%; padding: 16px; background: var(--accent); color: white; border: none; border-radius: 12px; font-size: 20px; font-weight: 800; cursor: pointer; margin-top: 8px; }
@@ -83,11 +86,7 @@
         .shop-price-tag { font-weight: 800; color: var(--accent); margin-right: 10px; font-size: 18px; }
         .total-banner { background: #edf2f7; padding: 16px; border-radius: 12px; margin-top: 20px; color: var(--primary); }
         .total-main-row { display: flex; justify-content: space-between; align-items: center; font-size: 21px; font-weight: 800; }
-        .savings-box { margin-top: 12px; padding-top: 10px; border-top: 1px solid #cbd5e1; font-size: 14px; color: var(--primary); display: none; }
-        .savings-header { font-weight: 700; color: #15803d; margin-bottom: 6px; font-size: 15px; }
-        .savings-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #e2e8f0; }
-        .savings-row:last-child { border-bottom: none; }
-        .savings-diff { font-weight: 800; color: #15803d; }
+        .savings-note { margin-top: 10px; padding-top: 10px; border-top: 1px solid #cbd5e1; font-size: 16px; font-weight: 700; color: #15803d; line-height: 1.4; display: none; }
         .btn-clear { width: 100%; margin-top: 12px; padding: 14px; background: #fff; color: var(--danger); border: 2px solid var(--danger); border-radius: 12px; font-size: 17px; font-weight: 800; cursor: pointer; }
         .backup-box { margin-top: 30px; padding-top: 15px; border-top: 2px dashed var(--border); display: flex; flex-direction: column; gap: 10px; }
         .backup-row { display: flex; gap: 10px; }
@@ -119,13 +118,7 @@
 
         <div class="form-group">
             <label>Supermercado / Tienda</label>
-            <div class="store-grid">
-                <div class="store-option selected" data-store="Mercadona" onclick="selectStore('Mercadona')">Mercadona</div>
-                <div class="store-option" data-store="Lidl" onclick="selectStore('Lidl')">Lidl</div>
-                <div class="store-option" data-store="Aldi" onclick="selectStore('Aldi')">Aldi</div>
-                <div class="store-option" data-store="Caprabo" onclick="selectStore('Caprabo')">Caprabo</div>
-                <div class="store-option full-row" data-store="Otra" onclick="selectStore('Otra')">🏪 Otra tienda (manual)</div>
-            </div>
+            <div class="store-grid" id="storeGrid"></div>
             <div id="customStoreBox" class="custom-store-box">
                 <input type="text" id="customStoreName" list="existingStores" placeholder="Nombre de la tienda (ej. Frutería, Bonpreu...)">
                 <button type="button" class="btn-clear-input" onclick="clearCustomStore()" title="Limpiar tienda">×</button>
@@ -176,7 +169,7 @@
                 <span>Total estimado:</span>
                 <span id="totalEstimated">0,00 €</span>
             </div>
-            <div id="savingsBox" class="savings-box"></div>
+            <div id="savingsNote" class="savings-note"></div>
         </div>
 
         <button class="btn-clear" onclick="clearDoneItems()">🗑️ Borrar productos tachados</button>
@@ -187,12 +180,30 @@
     const DEFAULT_STORES = ['Mercadona', 'Lidl', 'Aldi', 'Caprabo'];
     let preciosDB = JSON.parse(localStorage.getItem('jose_super_precios')) || {};
     let shoppingList = JSON.parse(localStorage.getItem('jose_super_lista')) || [];
+    let customStores = JSON.parse(localStorage.getItem('jose_super_tiendas_custom')) || [];
     let selectedStore = 'Mercadona';
     let currentFilter = 'Todos';
+
+    function syncCustomStoresFromDB() {
+        let changed = false;
+        Object.values(preciosDB).forEach(prod => {
+            Object.keys(prod.prices).forEach(st => {
+                if (!DEFAULT_STORES.includes(st) && !customStores.includes(st)) {
+                    customStores.push(st);
+                    changed = true;
+                }
+            });
+        });
+        if (changed) {
+            localStorage.setItem('jose_super_tiendas_custom', JSON.stringify(customStores));
+        }
+    }
 
     function saveData() {
         localStorage.setItem('jose_super_precios', JSON.stringify(preciosDB));
         localStorage.setItem('jose_super_lista', JSON.stringify(shoppingList));
+        localStorage.setItem('jose_super_tiendas_custom', JSON.stringify(customStores));
+        renderStoreGrid();
         updateDatalists();
         updateListCount();
     }
@@ -209,6 +220,8 @@
         if (low === 'lidl') return 'Lidl';
         if (low === 'aldi') return 'Aldi';
         if (low === 'caprabo') return 'Caprabo';
+        const existingCustom = customStores.find(c => normalizeKey(c) === low);
+        if (existingCustom) return existingCustom;
         return clean.charAt(0).toUpperCase() + clean.slice(1);
     }
 
@@ -219,13 +232,95 @@
     }
 
     function getAllKnownStores() {
-        const customSet = new Set();
+        const set = new Set([...DEFAULT_STORES, ...customStores]);
         Object.values(preciosDB).forEach(prod => {
-            Object.keys(prod.prices).forEach(st => {
-                if (!DEFAULT_STORES.includes(st)) customSet.add(st);
-            });
+            Object.keys(prod.prices).forEach(st => set.add(st));
         });
-        return [...DEFAULT_STORES, ...Array.from(customSet).sort()];
+        const extras = Array.from(set).filter(s => !DEFAULT_STORES.includes(s));
+        return [...DEFAULT_STORES, ...extras];
+    }
+
+    function renderStoreGrid() {
+        const grid = document.getElementById('storeGrid');
+        grid.innerHTML = '';
+
+        DEFAULT_STORES.forEach(st => {
+            const div = document.createElement('div');
+            div.className = 'store-option' + (selectedStore === st ? ' selected' : '');
+            div.dataset.store = st;
+            div.textContent = st;
+            div.onclick = () => selectStore(st);
+            grid.appendChild(div);
+        });
+
+        customStores.forEach(st => {
+            const div = document.createElement('div');
+            div.className = 'store-option' + (selectedStore === st ? ' selected' : '');
+            div.dataset.store = st;
+            div.dataset.type = 'custom';
+            div.textContent = st;
+            div.onclick = () => selectStore(st);
+
+            const delBtn = document.createElement('button');
+            delBtn.type = 'button';
+            delBtn.className = 'btn-remove-store';
+            delBtn.textContent = '×';
+            delBtn.title = `Eliminar ${st}`;
+            delBtn.onclick = (e) => {
+                e.stopPropagation();
+                removeCustomStore(st);
+            };
+            div.appendChild(delBtn);
+            grid.appendChild(div);
+        });
+
+        const addBtn = document.createElement('div');
+        addBtn.className = 'store-option full-row' + (selectedStore === 'Otra' ? ' selected' : '');
+        addBtn.dataset.store = 'Otra';
+        addBtn.textContent = '➕ Añadir nueva tienda';
+        addBtn.onclick = () => selectStore('Otra');
+        grid.appendChild(addBtn);
+    }
+
+    function removeCustomStore(storeName) {
+        let affectedCount = 0;
+        Object.values(preciosDB).forEach(prod => {
+            if (prod.prices && prod.prices[storeName]) {
+                affectedCount++;
+            }
+        });
+
+        const warningMsg = affectedCount > 0
+            ? `¿Seguro que quieres eliminar de verdad la tienda "${storeName}"?\n\n⚠️ Se borrarán también los ${affectedCount} ${affectedCount === 1 ? 'precio registrado' : 'precios registrados'} en esta tienda.`
+            : `¿Seguro que quieres eliminar de verdad la tienda "${storeName}"?`;
+
+        if (!confirm(warningMsg)) return;
+
+        // 1. Eliminar la tienda de la lista de tiendas personalizadas
+        customStores = customStores.filter(s => s !== storeName);
+
+        // 2. Borrar todos los precios asociados a esa tienda en todos los productos
+        Object.keys(preciosDB).forEach(key => {
+            if (preciosDB[key].prices && preciosDB[key].prices[storeName]) {
+                delete preciosDB[key].prices[storeName];
+                if (Object.keys(preciosDB[key].prices).length === 0) {
+                    delete preciosDB[key];
+                }
+            }
+        });
+
+        // 3. Resetear selección y filtros si apuntaban a la tienda eliminada
+        if (selectedStore === storeName) {
+            selectedStore = 'Mercadona';
+        }
+        if (currentFilter === storeName) {
+            currentFilter = 'Todos';
+        }
+
+        saveData();
+        renderComparator();
+        renderFilterPills();
+        renderShoppingList();
     }
 
     function switchTab(tab) {
@@ -235,6 +330,7 @@
         if (tab === 'anotar') {
             document.querySelectorAll('.tab-btn')[0].classList.add('active');
             document.getElementById('sec-anotar').classList.add('active');
+            renderStoreGrid();
         } else if (tab === 'comparar') {
             document.querySelectorAll('.tab-btn')[1].classList.add('active');
             document.getElementById('sec-comparar').classList.add('active');
@@ -249,9 +345,7 @@
 
     function selectStore(store) {
         selectedStore = store;
-        document.querySelectorAll('.store-option').forEach(el => {
-            el.classList.toggle('selected', el.dataset.store === store);
-        });
+        renderStoreGrid();
         const customBox = document.getElementById('customStoreBox');
         if (store === 'Otra') {
             customBox.style.display = 'flex';
@@ -277,10 +371,16 @@
         if (selectedStore === 'Otra') {
             const customInput = document.getElementById('customStoreName').value.trim();
             if (!customInput) {
-                alert('Por favor, escribe el nombre de la tienda.');
+                alert('Por favor, escribe el nombre de la nueva tienda.');
                 return;
             }
             finalStore = formatStoreName(customInput);
+            if (!DEFAULT_STORES.includes(finalStore) && !customStores.includes(finalStore)) {
+                customStores.push(finalStore);
+            }
+            selectedStore = finalStore;
+            document.getElementById('customStoreBox').style.display = 'none';
+            document.getElementById('customStoreName').value = '';
         }
 
         if (!rawName || isNaN(priceVal) || priceVal <= 0) {
@@ -327,9 +427,6 @@
 
         document.getElementById('prodName').value = '';
         document.getElementById('prodPrice').value = '';
-        if (selectedStore === 'Otra') {
-            document.getElementById('customStoreName').value = '';
-        }
     }
 
     function handleTSVUpload(event) {
@@ -362,6 +459,10 @@
                 if (!rawProd || !validStore || isNaN(priceVal) || priceVal <= 0) {
                     skippedLines.push(`Línea ${index + 1} (${rawProd || 'sin nombre'}): tienda o precio no válido`);
                     return;
+                }
+
+                if (!DEFAULT_STORES.includes(validStore) && !customStores.includes(validStore)) {
+                    customStores.push(validStore);
                 }
 
                 const key = normalizeKey(rawProd);
@@ -400,12 +501,10 @@
 
         const dlStores = document.getElementById('existingStores');
         dlStores.innerHTML = '';
-        getAllKnownStores().forEach(st => {
-            if (!DEFAULT_STORES.includes(st)) {
-                const opt = document.createElement('option');
-                opt.value = st;
-                dlStores.appendChild(opt);
-            }
+        customStores.forEach(st => {
+            const opt = document.createElement('option');
+            opt.value = st;
+            dlStores.appendChild(opt);
         });
     }
 
@@ -538,73 +637,34 @@
         return { store: entries[0][0], price: entries[0][1].price };
     }
 
-    function buildRepeatedProductsComparison() {
-        // Filtramos únicamente los productos de la lista que tienen precios en 2 o más tiendas
-        const comparableItems = [];
+    function calculateTotalSavings() {
+        let totalDiff = 0;
+
         shoppingList.forEach(item => {
+            if (currentFilter !== 'Todos') {
+                const best = getBestOptionForProduct(item.name);
+                if (best.store !== currentFilter) return;
+            }
+
             const key = normalizeKey(item.name);
             if (preciosDB[key]) {
-                const entries = Object.entries(preciosDB[key].prices);
-                if (entries.length >= 2) {
-                    entries.sort((a, b) => a[1].price - b[1].price);
-                    comparableItems.push({
-                        name: item.name,
-                        bestPrice: entries[0][1].price,
-                        bestStore: entries[0][0],
-                        worstPrice: entries[entries.length - 1][1].price,
-                        pricesMap: preciosDB[key].prices
-                    });
+                const prices = Object.values(preciosDB[key].prices).map(p => p.price);
+                if (prices.length >= 2) {
+                    const maxPrice = Math.max(...prices);
+                    const minPrice = Math.min(...prices);
+                    totalDiff += (maxPrice - minPrice);
                 }
             }
         });
 
-        if (comparableItems.length === 0) return null;
-
-        const optimizedComparableTotal = comparableItems.reduce((acc, it) => acc + it.bestPrice, 0);
-        const worstComparableTotal = comparableItems.reduce((acc, it) => acc + it.worstPrice, 0);
-        const maxSavings = worstComparableTotal - optimizedComparableTotal;
-
-        // Calculamos cuánto costarían esos productos comparables en cada tienda donde estén registrados
-        const storeBreakdown = [];
-        getAllKnownStores().forEach(store => {
-            let storeSum = 0;
-            let bestSumForThose = 0;
-            let countInStore = 0;
-
-            comparableItems.forEach(it => {
-                if (it.pricesMap[store]) {
-                    storeSum += it.pricesMap[store].price;
-                    bestSumForThose += it.bestPrice;
-                    countInStore++;
-                }
-            });
-
-            if (countInStore > 0) {
-                storeBreakdown.push({
-                    store: store,
-                    count: countInStore,
-                    storeTotal: storeSum,
-                    savedVsStore: storeSum - bestSumForThose
-                });
-            }
-        });
-
-        // Ordenamos de mayor ahorro a menor ahorro
-        storeBreakdown.sort((a, b) => b.savedVsStore - a.savedVsStore);
-
-        return {
-            count: comparableItems.length,
-            optimizedTotal: optimizedComparableTotal,
-            maxSavings: maxSavings,
-            storeBreakdown: storeBreakdown
-        };
+        return totalDiff;
     }
 
     function renderShoppingList() {
         const container = document.getElementById('shoppingListContainer');
-        const savingsBox = document.getElementById('savingsBox');
+        const savingsEl = document.getElementById('savingsNote');
         container.innerHTML = '';
-        savingsBox.style.display = 'none';
+        savingsEl.style.display = 'none';
 
         if (shoppingList.length === 0) {
             container.innerHTML = '<div class="empty-msg">Tu lista está vacía. Añade productos arriba o desde el comparador.</div>';
@@ -661,34 +721,11 @@
 
         document.getElementById('totalEstimated').textContent = grandTotal.toFixed(2).replace('.', ',') + ' €';
 
-        if (currentFilter === 'Todos') {
-            const comp = buildRepeatedProductsComparison();
-            if (comp && comp.maxSavings > 0.005) {
-                savingsBox.style.display = 'block';
-                const optStr = comp.optimizedTotal.toFixed(2).replace('.', ',');
-                const maxSaveStr = comp.maxSavings.toFixed(2).replace('.', ',');
-
-                let rowsHtml = `
-                    <div class="savings-header">
-                        📊 Comparativa en ${comp.count} ${comp.count === 1 ? 'producto repetido' : 'productos repetidos'} (pagas ${optStr} € y ahorras hasta ${maxSaveStr} €):
-                    </div>
-                `;
-
-                comp.storeBreakdown.forEach(st => {
-                    const stTotStr = st.storeTotal.toFixed(2).replace('.', ',');
-                    const diffStr = st.savedVsStore.toFixed(2).replace('.', ',');
-                    const prodLabel = `${st.count}/${comp.count} prod.`;
-                    
-                    rowsHtml += `
-                        <div class="savings-row">
-                            <span>• En <strong>${st.store}</strong> (${prodLabel}): ${stTotStr} €</span>
-                            <span class="savings-diff">${st.savedVsStore > 0.005 ? `ahorras ${diffStr} €` : 'mejor precio'}</span>
-                        </div>
-                    `;
-                });
-
-                savingsBox.innerHTML = rowsHtml;
-            }
+        const totalSavings = calculateTotalSavings();
+        if (totalSavings > 0.005) {
+            const savedStr = totalSavings.toFixed(2).replace('.', ',');
+            savingsEl.style.display = 'block';
+            savingsEl.innerHTML = `💰 Haciendo la compra con la lista actual te ahorras: <strong>${savedStr} €</strong>`;
         }
     }
 
@@ -726,7 +763,7 @@
     }
 
     function exportData() {
-        const backup = JSON.stringify({ preciosDB, shoppingList });
+        const backup = JSON.stringify({ preciosDB, shoppingList, customStores });
         navigator.clipboard.writeText(backup).then(() => {
             alert('✅ Copia de seguridad copiada al portapapeles. Pégala en una nota de tu iPhone para guardarla.');
         }).catch(() => {
@@ -742,6 +779,8 @@
             if (parsed.preciosDB) {
                 preciosDB = parsed.preciosDB;
                 shoppingList = parsed.shoppingList || [];
+                customStores = parsed.customStores || [];
+                syncCustomStoresFromDB();
                 saveData();
                 renderComparator();
                 renderFilterPills();
@@ -755,6 +794,8 @@
     }
 
     window.onload = () => {
+        syncCustomStoresFromDB();
+        renderStoreGrid();
         updateDatalists();
         updateListCount();
         renderFilterPills();
