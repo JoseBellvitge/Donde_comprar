@@ -19,6 +19,7 @@
             --c-lidl: #0050aa;
             --c-aldi: #00b6ed;
             --c-caprabo: #e30613;
+            --c-custom: #8e44ad;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: var(--bg-color); color: var(--text-color); padding: 12px; display: flex; justify-content: center; min-height: 100vh; }
@@ -36,10 +37,13 @@
         input:focus { border-color: var(--accent); }
         .store-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .store-option { padding: 14px; border: 2px solid var(--border); border-radius: 12px; font-size: 18px; font-weight: 800; text-align: center; cursor: pointer; background: #f8fafc; transition: all 0.15s; }
+        .store-option.full-row { grid-column: 1 / -1; }
         .store-option.selected[data-store="Mercadona"] { background: var(--c-mercadona); color: white; border-color: var(--c-mercadona); }
         .store-option.selected[data-store="Lidl"] { background: var(--c-lidl); color: white; border-color: var(--c-lidl); }
         .store-option.selected[data-store="Aldi"] { background: var(--c-aldi); color: white; border-color: var(--c-aldi); }
         .store-option.selected[data-store="Caprabo"] { background: var(--c-caprabo); color: white; border-color: var(--c-caprabo); }
+        .store-option.selected[data-store="Otra"] { background: var(--c-custom); color: white; border-color: var(--c-custom); }
+        .custom-store-box { margin-top: 10px; display: none; }
         .btn-main { width: 100%; padding: 16px; background: var(--accent); color: white; border: none; border-radius: 12px; font-size: 20px; font-weight: 800; cursor: pointer; margin-top: 8px; }
         .btn-main:hover { background: var(--accent-hover); }
         .feedback-box { margin-top: 16px; padding: 14px; border-radius: 12px; font-size: 17px; font-weight: 700; text-align: center; display: none; }
@@ -49,16 +53,19 @@
         .comp-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0; }
         .comp-title { font-size: 21px; font-weight: 800; color: var(--primary); }
         .btn-add-list-mini { background: var(--primary); color: white; border: none; padding: 8px 12px; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
-        .price-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-radius: 8px; margin-bottom: 6px; font-size: 18px; background: #fff; border: 1px solid #e2e8f0; }
+        .price-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-radius: 8px; margin-bottom: 6px; font-size: 18px; background: #fff; border: 1px solid #e2e8f0; gap: 8px; }
         .price-row.cheapest { background: #e8f8f0; border: 2px solid var(--accent); font-weight: 800; }
-        .store-badge { padding: 4px 10px; border-radius: 6px; color: white; font-size: 15px; font-weight: 800; }
+        .store-badge { padding: 4px 10px; border-radius: 6px; color: white; font-size: 15px; font-weight: 800; display: inline-block; }
         .bg-Mercadona { background: var(--c-mercadona); }
         .bg-Lidl { background: var(--c-lidl); }
         .bg-Aldi { background: var(--c-aldi); }
         .bg-Caprabo { background: var(--c-caprabo); }
-        .price-meta { display: flex; align-items: center; gap: 10px; }
+        .bg-Custom { background: var(--c-custom); }
+        .price-meta { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
         .date-tag { font-size: 12px; color: #64748b; font-weight: normal; }
-        .btn-del-tiny { background: none; border: none; color: #94a3b8; font-size: 20px; cursor: pointer; padding: 0 4px; }
+        .btn-icon-tiny { background: none; border: none; color: #64748b; font-size: 18px; cursor: pointer; padding: 2px 4px; }
+        .btn-icon-tiny:hover { color: var(--primary); }
+        .btn-del-tiny { background: none; border: none; color: #94a3b8; font-size: 22px; cursor: pointer; padding: 0 4px; line-height: 1; }
         .btn-del-tiny:hover { color: var(--danger); }
         .list-add-bar { display: flex; gap: 8px; margin-bottom: 15px; }
         .filter-pills { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 15px; }
@@ -106,12 +113,17 @@
         </div>
 
         <div class="form-group">
-            <label>Supermercado</label>
+            <label>Supermercado / Tienda</label>
             <div class="store-grid">
                 <div class="store-option selected" data-store="Mercadona" onclick="selectStore('Mercadona')">Mercadona</div>
                 <div class="store-option" data-store="Lidl" onclick="selectStore('Lidl')">Lidl</div>
                 <div class="store-option" data-store="Aldi" onclick="selectStore('Aldi')">Aldi</div>
                 <div class="store-option" data-store="Caprabo" onclick="selectStore('Caprabo')">Caprabo</div>
+                <div class="store-option full-row" data-store="Otra" onclick="selectStore('Otra')">🏪 Otra tienda (manual)</div>
+            </div>
+            <div id="customStoreBox" class="custom-store-box">
+                <input type="text" id="customStoreName" list="existingStores" placeholder="Nombre de la tienda (ej. Frutería, Bonpreu...)">
+                <datalist id="existingStores"></datalist>
             </div>
         </div>
 
@@ -149,13 +161,7 @@
             <button class="btn-main" style="width: auto; margin-top: 0; padding: 0 20px;" onclick="addToShoppingList()">+</button>
         </div>
 
-        <div class="filter-pills" id="storeFilters">
-            <button class="pill active" onclick="setFilter('Todos')">Todos</button>
-            <button class="pill" onclick="setFilter('Mercadona')">Mercadona</button>
-            <button class="pill" onclick="setFilter('Lidl')">Lidl</button>
-            <button class="pill" onclick="setFilter('Aldi')">Aldi</button>
-            <button class="pill" onclick="setFilter('Caprabo')">Caprabo</button>
-        </div>
+        <div class="filter-pills" id="storeFilters"></div>
 
         <div id="shoppingListContainer"></div>
 
@@ -172,6 +178,7 @@
 </div>
 
 <script>
+    const DEFAULT_STORES = ['Mercadona', 'Lidl', 'Aldi', 'Caprabo'];
     let preciosDB = JSON.parse(localStorage.getItem('jose_super_precios')) || {};
     let shoppingList = JSON.parse(localStorage.getItem('jose_super_lista')) || [];
     let selectedStore = 'Mercadona';
@@ -180,7 +187,7 @@
     function saveData() {
         localStorage.setItem('jose_super_precios', JSON.stringify(preciosDB));
         localStorage.setItem('jose_super_lista', JSON.stringify(shoppingList));
-        updateDatalist();
+        updateDatalists();
         updateListCount();
     }
 
@@ -188,13 +195,31 @@
         return str.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     }
 
-    function normalizeStoreName(rawStore) {
-        const s = normalizeKey(rawStore);
-        if (s.includes('mercadona')) return 'Mercadona';
-        if (s.includes('lidl')) return 'Lidl';
-        if (s.includes('aldi')) return 'Aldi';
-        if (s.includes('caprabo')) return 'Caprabo';
-        return null;
+    function formatStoreName(rawStore) {
+        const clean = rawStore.trim();
+        if (!clean) return null;
+        const low = normalizeKey(clean);
+        if (low === 'mercadona') return 'Mercadona';
+        if (low === 'lidl') return 'Lidl';
+        if (low === 'aldi') return 'Aldi';
+        if (low === 'caprabo') return 'Caprabo';
+        return clean.charAt(0).toUpperCase() + clean.slice(1);
+    }
+
+    function getStoreBgClass(store) {
+        if (DEFAULT_STORES.includes(store)) return `bg-${store}`;
+        if (store === 'Sin asignar') return 'bg-SinAsignar';
+        return 'bg-Custom';
+    }
+
+    function getAllKnownStores() {
+        const customSet = new Set();
+        Object.values(preciosDB).forEach(prod => {
+            Object.keys(prod.prices).forEach(st => {
+                if (!DEFAULT_STORES.includes(st)) customSet.add(st);
+            });
+        });
+        return [...DEFAULT_STORES, ...Array.from(customSet).sort()];
     }
 
     function switchTab(tab) {
@@ -211,6 +236,7 @@
         } else {
             document.querySelectorAll('.tab-btn')[2].classList.add('active');
             document.getElementById('sec-lista').classList.add('active');
+            renderFilterPills();
             renderShoppingList();
         }
     }
@@ -220,11 +246,28 @@
         document.querySelectorAll('.store-option').forEach(el => {
             el.classList.toggle('selected', el.dataset.store === store);
         });
+        const customBox = document.getElementById('customStoreBox');
+        if (store === 'Otra') {
+            customBox.style.display = 'block';
+            document.getElementById('customStoreName').focus();
+        } else {
+            customBox.style.display = 'none';
+        }
     }
 
     function savePrice() {
         const rawName = document.getElementById('prodName').value.trim();
         const priceVal = parseFloat(document.getElementById('prodPrice').value);
+
+        let finalStore = selectedStore;
+        if (selectedStore === 'Otra') {
+            const customInput = document.getElementById('customStoreName').value.trim();
+            if (!customInput) {
+                alert('Por favor, escribe el nombre de la tienda.');
+                return;
+            }
+            finalStore = formatStoreName(customInput);
+        }
 
         if (!rawName || isNaN(priceVal) || priceVal <= 0) {
             alert('Por favor, escribe el nombre del producto y un precio válido.');
@@ -246,7 +289,7 @@
         }
 
         preciosDB[key].displayName = rawName;
-        preciosDB[key].prices[selectedStore] = { price: priceVal, date: todayStr };
+        preciosDB[key].prices[finalStore] = { price: priceVal, date: todayStr };
         saveData();
 
         const fb = document.getElementById('feedbackBox');
@@ -254,18 +297,18 @@
 
         if (!prevBest) {
             fb.className = 'feedback-box feedback-good';
-            fb.textContent = `✅ Guardado: ${rawName} a ${priceVal.toFixed(2)} € en ${selectedStore}.`;
+            fb.textContent = `✅ Guardado: ${rawName} a ${priceVal.toFixed(2)} € en ${finalStore}.`;
         } else if (priceVal < prevBest.price) {
             const diff = (prevBest.price - priceVal).toFixed(2);
             fb.className = 'feedback-box feedback-good';
             fb.textContent = `🏆 ¡Nuevo mejor precio! Ahorras ${diff} € respecto a ${prevBest.store} (${prevBest.price.toFixed(2)} €).`;
-        } else if (priceVal > prevBest.price && prevBest.store !== selectedStore) {
+        } else if (priceVal > prevBest.price && prevBest.store !== finalStore) {
             const diff = (priceVal - prevBest.price).toFixed(2);
             fb.className = 'feedback-box feedback-warn';
             fb.textContent = `⚠️ Guardado, pero en ${prevBest.store} lo tienes ${diff} € más barato (${prevBest.price.toFixed(2)} €).`;
         } else {
             fb.className = 'feedback-box feedback-good';
-            fb.textContent = `✅ Precio actualizado en ${selectedStore}: ${priceVal.toFixed(2)} €.`;
+            fb.textContent = `✅ Precio actualizado en ${finalStore}: ${priceVal.toFixed(2)} €.`;
         }
 
         document.getElementById('prodName').value = '';
@@ -293,10 +336,9 @@
                 }
 
                 const rawProd = parts[0].trim();
-                const rawStore = parts[1].trim();
+                const validStore = formatStoreName(parts[1]);
                 const rawPrice = parts[2].trim().replace('€', '').replace(',', '.').trim();
                 const priceVal = parseFloat(rawPrice);
-                const validStore = normalizeStoreName(rawStore);
 
                 if (index === 0 && isNaN(priceVal)) return;
 
@@ -330,13 +372,23 @@
         reader.readAsText(file, 'UTF-8');
     }
 
-    function updateDatalist() {
-        const dl = document.getElementById('existingProducts');
-        dl.innerHTML = '';
+    function updateDatalists() {
+        const dlProd = document.getElementById('existingProducts');
+        dlProd.innerHTML = '';
         Object.values(preciosDB).forEach(item => {
             const opt = document.createElement('option');
             opt.value = item.displayName;
-            dl.appendChild(opt);
+            dlProd.appendChild(opt);
+        });
+
+        const dlStores = document.getElementById('existingStores');
+        dlStores.innerHTML = '';
+        getAllKnownStores().forEach(st => {
+            if (!DEFAULT_STORES.includes(st)) {
+                const opt = document.createElement('option');
+                opt.value = st;
+                dlStores.appendChild(opt);
+            }
         });
     }
 
@@ -363,16 +415,19 @@
             let rowsHtml = '';
             storeEntries.forEach(([store, info], idx) => {
                 const isBest = idx === 0;
+                const badgeClass = getStoreBgClass(store);
+                const safeStore = store.replace(/'/g, "\\'");
                 rowsHtml += `
                     <div class="price-row ${isBest ? 'cheapest' : ''}">
                         <div>
-                            <span class="store-badge bg-${store}">${store}</span>
+                            <span class="store-badge ${badgeClass}">${store}</span>
                             ${isBest && storeEntries.length > 1 ? ' 🏆' : ''}
                         </div>
                         <div class="price-meta">
                             <span class="date-tag">(${info.date})</span>
                             <span>${info.price.toFixed(2)} €</span>
-                            <button class="btn-del-tiny" onclick="deleteStorePrice('${key}', '${store}')" title="Borrar este precio">×</button>
+                            <button class="btn-icon-tiny" onclick="editStorePrice('${key}', '${safeStore}')" title="Editar precio">✏️</button>
+                            <button class="btn-del-tiny" onclick="deleteStorePrice('${key}', '${safeStore}')" title="Borrar precio">×</button>
                         </div>
                     </div>
                 `;
@@ -387,6 +442,26 @@
             `;
             container.appendChild(card);
         });
+    }
+
+    function editStorePrice(key, store) {
+        if (!preciosDB[key] || !preciosDB[key].prices[store]) return;
+        const currentPrice = preciosDB[key].prices[store].price;
+        const prodName = preciosDB[key].displayName;
+
+        const input = prompt(`Nuevo precio (€) para "${prodName}" en ${store}:`, currentPrice.toFixed(2));
+        if (input === null) return;
+
+        const newPrice = parseFloat(input.replace(',', '.').trim());
+        if (isNaN(newPrice) || newPrice <= 0) {
+            alert('Por favor, introduce un precio válido mayor que 0.');
+            return;
+        }
+
+        const todayStr = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
+        preciosDB[key].prices[store] = { price: newPrice, date: todayStr };
+        saveData();
+        renderComparator();
     }
 
     function deleteStorePrice(key, store) {
@@ -417,11 +492,24 @@
         renderShoppingList();
     }
 
+    function renderFilterPills() {
+        const container = document.getElementById('storeFilters');
+        const stores = ['Todos', ...getAllKnownStores()];
+        if (!stores.includes(currentFilter)) currentFilter = 'Todos';
+
+        container.innerHTML = '';
+        stores.forEach(st => {
+            const btn = document.createElement('button');
+            btn.className = 'pill' + (currentFilter === st ? ' active' : '');
+            btn.textContent = st;
+            btn.onclick = () => setFilter(st);
+            container.appendChild(btn);
+        });
+    }
+
     function setFilter(store) {
         currentFilter = store;
-        document.querySelectorAll('.pill').forEach(p => {
-            p.classList.toggle('active', p.textContent === store);
-        });
+        renderFilterPills();
         renderShoppingList();
     }
 
@@ -434,7 +522,7 @@
     }
 
     function calculateSingleStoreSavings(optimizedTotal) {
-        const stores = ['Mercadona', 'Lidl', 'Aldi', 'Caprabo'];
+        const stores = getAllKnownStores();
         let singleStoreTotals = [];
         let worstCaseTotal = 0;
         let hasComparisons = false;
@@ -503,30 +591,25 @@
             return;
         }
 
-        const groups = {
-            'Mercadona': [],
-            'Lidl': [],
-            'Aldi': [],
-            'Caprabo': [],
-            'Sin asignar': []
-        };
+        const storesOrder = [...getAllKnownStores(), 'Sin asignar'];
+        const groups = {};
+        storesOrder.forEach(s => groups[s] = []);
 
         let grandTotal = 0;
 
         shoppingList.forEach(item => {
             const best = getBestOptionForProduct(item.name);
+            if (!groups[best.store]) groups[best.store] = [];
             groups[best.store].push({ ...item, bestPrice: best.price, bestStore: best.store });
             if (best.price !== null && (currentFilter === 'Todos' || currentFilter === best.store)) {
                 grandTotal += best.price;
             }
         });
 
-        const storesOrder = ['Mercadona', 'Lidl', 'Aldi', 'Caprabo', 'Sin asignar'];
-
         storesOrder.forEach(storeName => {
             if (currentFilter !== 'Todos' && currentFilter !== storeName) return;
             const itemsInStore = groups[storeName];
-            if (itemsInStore.length === 0) return;
+            if (!itemsInStore || itemsInStore.length === 0) return;
 
             itemsInStore.sort((a, b) => a.done - b.done);
 
@@ -534,7 +617,7 @@
             itemsInStore.forEach(i => { if (i.bestPrice) subtotal += i.bestPrice; });
 
             const header = document.createElement('div');
-            const bgClass = storeName === 'Sin asignar' ? 'bg-SinAsignar' : `bg-${storeName}`;
+            const bgClass = getStoreBgClass(storeName);
             header.className = `store-group-title ${bgClass}`;
             header.innerHTML = `
                 <span>${storeName === 'Sin asignar' ? '❓ Sin precio registrado' : '🏪 ' + storeName}</span>
@@ -625,6 +708,7 @@
                 shoppingList = parsed.shoppingList || [];
                 saveData();
                 renderComparator();
+                renderFilterPills();
                 alert('✅ Datos restaurados correctamente.');
             } else {
                 alert('El formato del texto no es válido.');
@@ -635,8 +719,9 @@
     }
 
     window.onload = () => {
-        updateDatalist();
+        updateDatalists();
         updateListCount();
+        renderFilterPills();
     };
 </script>
 
