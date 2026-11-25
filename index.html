@@ -67,20 +67,41 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
             background: #eef2f6;
             padding: 10px 12px;
             border-radius: 10px;
             margin-bottom: 12px;
             border-bottom: 2px solid #cbd5e1;
         }
+        .comp-title-wrap {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex: 1;
+            min-width: 0;
+        }
         .comp-title {
-            font-size: 20px;
+            font-size: 19px;
             font-weight: 900;
             color: #0f172a;
             text-transform: uppercase;
             letter-spacing: 0.4px;
             line-height: 1.25;
+            word-break: break-word;
+        }
+        .btn-edit-name {
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 4px 7px;
+            font-size: 15px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .btn-edit-name:hover {
+            border-color: var(--primary);
+            background: #f8fafc;
         }
         .btn-add-list-mini {
             background: var(--primary);
@@ -586,13 +607,63 @@
             const upperName = prod.displayName.toUpperCase();
             card.innerHTML = `
                 <div class="comp-header">
-                    <span class="comp-title">🧺 ${upperName}</span>
+                    <div class="comp-title-wrap">
+                        <span class="comp-title">🧺 ${upperName}</span>
+                        <button class="btn-edit-name" onclick="editProductName('${key}')" title="Cambiar nombre del producto">✏️</button>
+                    </div>
                     <button class="btn-add-list-mini" onclick="quickAddToList('${upperName.replace(/'/g, "\\'")}')">+ Lista</button>
                 </div>
                 ${rowsHtml}
             `;
             container.appendChild(card);
         });
+    }
+
+    function editProductName(oldKey) {
+        if (!preciosDB[oldKey]) return;
+        const oldName = preciosDB[oldKey].displayName.toUpperCase();
+
+        const input = prompt('Nuevo nombre para este producto:', oldName);
+        if (input === null) return;
+
+        const newName = input.trim().toUpperCase();
+        if (!newName) {
+            alert('El nombre del producto no puede quedar vacío.');
+            return;
+        }
+        if (newName === oldName) return;
+
+        const newKey = normalizeKey(newName);
+
+        if (newKey === oldKey) {
+            // Solo cambian tildes o formato, misma clave interna
+            preciosDB[oldKey].displayName = newName;
+        } else if (preciosDB[newKey]) {
+            // Ya existe otro producto con ese nombre: ofrecer fusión
+            if (!confirm(`Ya existe un producto llamado "${preciosDB[newKey].displayName.toUpperCase()}".\n\n¿Quieres fusionar ambos productos y juntar todos sus precios?`)) {
+                return;
+            }
+            preciosDB[newKey].displayName = newName;
+            Object.assign(preciosDB[newKey].prices, preciosDB[oldKey].prices);
+            delete preciosDB[oldKey];
+        } else {
+            // Nombre completamente nuevo: mover datos a la nueva clave
+            preciosDB[newKey] = {
+                displayName: newName,
+                prices: preciosDB[oldKey].prices
+            };
+            delete preciosDB[oldKey];
+        }
+
+        // Actualizar también el nombre en la lista de la compra si estaba apuntado
+        shoppingList.forEach(item => {
+            if (normalizeKey(item.name) === oldKey) {
+                item.name = newName;
+            }
+        });
+
+        saveData();
+        renderComparator();
     }
 
     function editStorePrice(key, store) {
@@ -626,7 +697,6 @@
         }
     }
 
-    // Comprobación centralizada para añadir productos a la lista sin duplicados
     function insertProductIfUnique(rawName, showAddedAlert) {
         const upper = rawName.trim().toUpperCase();
         if (!upper) return false;
