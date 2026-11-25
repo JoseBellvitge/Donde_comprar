@@ -83,7 +83,11 @@
         .shop-price-tag { font-weight: 800; color: var(--accent); margin-right: 10px; font-size: 18px; }
         .total-banner { background: #edf2f7; padding: 16px; border-radius: 12px; margin-top: 20px; color: var(--primary); }
         .total-main-row { display: flex; justify-content: space-between; align-items: center; font-size: 21px; font-weight: 800; }
-        .savings-note { margin-top: 8px; padding-top: 8px; border-top: 1px solid #cbd5e1; font-size: 14px; font-weight: 600; color: #15803d; line-height: 1.4; display: none; }
+        .savings-box { margin-top: 12px; padding-top: 10px; border-top: 1px solid #cbd5e1; font-size: 14px; color: var(--primary); display: none; }
+        .savings-header { font-weight: 700; color: #15803d; margin-bottom: 6px; font-size: 15px; }
+        .savings-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #e2e8f0; }
+        .savings-row:last-child { border-bottom: none; }
+        .savings-diff { font-weight: 800; color: #15803d; }
         .btn-clear { width: 100%; margin-top: 12px; padding: 14px; background: #fff; color: var(--danger); border: 2px solid var(--danger); border-radius: 12px; font-size: 17px; font-weight: 800; cursor: pointer; }
         .backup-box { margin-top: 30px; padding-top: 15px; border-top: 2px dashed var(--border); display: flex; flex-direction: column; gap: 10px; }
         .backup-row { display: flex; gap: 10px; }
@@ -172,7 +176,7 @@
                 <span>Total estimado:</span>
                 <span id="totalEstimated">0,00 €</span>
             </div>
-            <div id="savingsNote" class="savings-note"></div>
+            <div id="savingsBox" class="savings-box"></div>
         </div>
 
         <button class="btn-clear" onclick="clearDoneItems()">🗑️ Borrar productos tachados</button>
@@ -534,69 +538,73 @@
         return { store: entries[0][0], price: entries[0][1].price };
     }
 
-    function calculateSingleStoreSavings(optimizedTotal) {
-        const stores = getAllKnownStores();
-        let singleStoreTotals = [];
-        let worstCaseTotal = 0;
-        let hasComparisons = false;
-
-        stores.forEach(store => {
-            let storeSum = 0;
-            let validCount = 0;
-
-            shoppingList.forEach(item => {
-                const key = normalizeKey(item.name);
-                if (preciosDB[key] && Object.keys(preciosDB[key].prices).length > 0) {
-                    const entries = Object.entries(preciosDB[key].prices);
-                    if (entries.length > 1) hasComparisons = true;
-
-                    if (preciosDB[key].prices[store]) {
-                        storeSum += preciosDB[key].prices[store].price;
-                        validCount++;
-                    } else {
-                        const avg = entries.reduce((acc, e) => acc + e[1].price, 0) / entries.length;
-                        storeSum += avg;
-                    }
-                }
-            });
-
-            if (validCount > 0) {
-                singleStoreTotals.push({ store, total: storeSum });
-            }
-        });
-
+    function buildRepeatedProductsComparison() {
+        // Filtramos únicamente los productos de la lista que tienen precios en 2 o más tiendas
+        const comparableItems = [];
         shoppingList.forEach(item => {
             const key = normalizeKey(item.name);
             if (preciosDB[key]) {
-                const entries = Object.values(preciosDB[key].prices);
-                if (entries.length > 0) {
-                    const maxP = Math.max(...entries.map(e => e.price));
-                    worstCaseTotal += maxP;
+                const entries = Object.entries(preciosDB[key].prices);
+                if (entries.length >= 2) {
+                    entries.sort((a, b) => a[1].price - b[1].price);
+                    comparableItems.push({
+                        name: item.name,
+                        bestPrice: entries[0][1].price,
+                        bestStore: entries[0][0],
+                        worstPrice: entries[entries.length - 1][1].price,
+                        pricesMap: preciosDB[key].prices
+                    });
                 }
             }
         });
 
-        if (!hasComparisons || singleStoreTotals.length === 0) return null;
+        if (comparableItems.length === 0) return null;
 
-        singleStoreTotals.sort((a, b) => a.total - b.total);
-        const bestSingle = singleStoreTotals[0];
-        const savingsVsBestSingle = bestSingle.total - optimizedTotal;
-        const savingsVsWorst = worstCaseTotal - optimizedTotal;
+        const optimizedComparableTotal = comparableItems.reduce((acc, it) => acc + it.bestPrice, 0);
+        const worstComparableTotal = comparableItems.reduce((acc, it) => acc + it.worstPrice, 0);
+        const maxSavings = worstComparableTotal - optimizedComparableTotal;
 
-        if (savingsVsWorst <= 0.01) return null;
+        // Calculamos cuánto costarían esos productos comparables en cada tienda donde estén registrados
+        const storeBreakdown = [];
+        getAllKnownStores().forEach(store => {
+            let storeSum = 0;
+            let bestSumForThose = 0;
+            let countInStore = 0;
+
+            comparableItems.forEach(it => {
+                if (it.pricesMap[store]) {
+                    storeSum += it.pricesMap[store].price;
+                    bestSumForThose += it.bestPrice;
+                    countInStore++;
+                }
+            });
+
+            if (countInStore > 0) {
+                storeBreakdown.push({
+                    store: store,
+                    count: countInStore,
+                    storeTotal: storeSum,
+                    savedVsStore: storeSum - bestSumForThose
+                });
+            }
+        });
+
+        // Ordenamos de mayor ahorro a menor ahorro
+        storeBreakdown.sort((a, b) => b.savedVsStore - a.savedVsStore);
 
         return {
-            bestSingleStore: bestSingle.store,
-            savingsVsBestSingle: Math.max(0, savingsVsBestSingle),
-            savingsVsWorst: savingsVsWorst
+            count: comparableItems.length,
+            optimizedTotal: optimizedComparableTotal,
+            maxSavings: maxSavings,
+            storeBreakdown: storeBreakdown
         };
     }
 
     function renderShoppingList() {
         const container = document.getElementById('shoppingListContainer');
-        const savingsEl = document.getElementById('savingsNote');
+        const savingsBox = document.getElementById('savingsBox');
         container.innerHTML = '';
-        savingsEl.style.display = 'none';
+        savingsBox.style.display = 'none';
 
         if (shoppingList.length === 0) {
             container.innerHTML = '<div class="empty-msg">Tu lista está vacía. Añade productos arriba o desde el comparador.</div>';
@@ -654,17 +662,32 @@
         document.getElementById('totalEstimated').textContent = grandTotal.toFixed(2).replace('.', ',') + ' €';
 
         if (currentFilter === 'Todos') {
-            const savingsData = calculateSingleStoreSavings(grandTotal);
-            if (savingsData) {
-                savingsEl.style.display = 'block';
-                const vsSingleStr = savingsData.savingsVsBestSingle.toFixed(2).replace('.', ',');
-                const vsWorstStr = savingsData.savingsVsWorst.toFixed(2).replace('.', ',');
-                
-                if (savingsData.savingsVsBestSingle > 0.05) {
-                    savingsEl.innerHTML = `💰 Ahorras <strong>${vsSingleStr} €</strong> respecto a comprarlo todo en ${savingsData.bestSingleStore} (y hasta <strong>${vsWorstStr} €</strong> frente a la opción más cara).`;
-                } else {
-                    savingsEl.innerHTML = `💰 Ahorras hasta <strong>${vsWorstStr} €</strong> frente a comprar estos productos en el súper más caro.`;
-                }
+            const comp = buildRepeatedProductsComparison();
+            if (comp && comp.maxSavings > 0.005) {
+                savingsBox.style.display = 'block';
+                const optStr = comp.optimizedTotal.toFixed(2).replace('.', ',');
+                const maxSaveStr = comp.maxSavings.toFixed(2).replace('.', ',');
+
+                let rowsHtml = `
+                    <div class="savings-header">
+                        📊 Comparativa en ${comp.count} ${comp.count === 1 ? 'producto repetido' : 'productos repetidos'} (pagas ${optStr} € y ahorras hasta ${maxSaveStr} €):
+                    </div>
+                `;
+
+                comp.storeBreakdown.forEach(st => {
+                    const stTotStr = st.storeTotal.toFixed(2).replace('.', ',');
+                    const diffStr = st.savedVsStore.toFixed(2).replace('.', ',');
+                    const prodLabel = `${st.count}/${comp.count} prod.`;
+                    
+                    rowsHtml += `
+                        <div class="savings-row">
+                            <span>• En <strong>${st.store}</strong> (${prodLabel}): ${stTotStr} €</span>
+                            <span class="savings-diff">${st.savedVsStore > 0.005 ? `ahorras ${diffStr} €` : 'mejor precio'}</span>
+                        </div>
+                    `;
+                });
+
+                savingsBox.innerHTML = rowsHtml;
             }
         }
     }
