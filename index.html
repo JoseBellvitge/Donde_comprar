@@ -43,7 +43,8 @@
         .store-option.selected[data-store="Aldi"] { background: var(--c-aldi); color: white; border-color: var(--c-aldi); }
         .store-option.selected[data-store="Caprabo"] { background: var(--c-caprabo); color: white; border-color: var(--c-caprabo); }
         .store-option.selected[data-store="Otra"] { background: var(--c-custom); color: white; border-color: var(--c-custom); }
-        .custom-store-box { margin-top: 10px; display: none; }
+        .custom-store-box { margin-top: 10px; display: none; gap: 8px; align-items: center; }
+        .btn-clear-input { background: #e2e8f0; border: none; border-radius: 12px; padding: 14px 16px; font-size: 18px; font-weight: 800; color: var(--primary); cursor: pointer; flex-shrink: 0; }
         .btn-main { width: 100%; padding: 16px; background: var(--accent); color: white; border: none; border-radius: 12px; font-size: 20px; font-weight: 800; cursor: pointer; margin-top: 8px; }
         .btn-main:hover { background: var(--accent-hover); }
         .feedback-box { margin-top: 16px; padding: 14px; border-radius: 12px; font-size: 17px; font-weight: 700; text-align: center; display: none; }
@@ -123,6 +124,7 @@
             </div>
             <div id="customStoreBox" class="custom-store-box">
                 <input type="text" id="customStoreName" list="existingStores" placeholder="Nombre de la tienda (ej. Frutería, Bonpreu...)">
+                <button type="button" class="btn-clear-input" onclick="clearCustomStore()" title="Limpiar tienda">×</button>
                 <datalist id="existingStores"></datalist>
             </div>
         </div>
@@ -248,11 +250,19 @@
         });
         const customBox = document.getElementById('customStoreBox');
         if (store === 'Otra') {
-            customBox.style.display = 'block';
-            document.getElementById('customStoreName').focus();
+            customBox.style.display = 'flex';
+            const input = document.getElementById('customStoreName');
+            input.value = '';
+            input.focus();
         } else {
             customBox.style.display = 'none';
         }
+    }
+
+    function clearCustomStore() {
+        const input = document.getElementById('customStoreName');
+        input.value = '';
+        input.focus();
     }
 
     function savePrice() {
@@ -313,6 +323,9 @@
 
         document.getElementById('prodName').value = '';
         document.getElementById('prodPrice').value = '';
+        if (selectedStore === 'Otra') {
+            document.getElementById('customStoreName').value = '';
+        }
     }
 
     function handleTSVUpload(event) {
